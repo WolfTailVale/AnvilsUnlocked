@@ -1,0 +1,83 @@
+# ===========================
+# General
+# ===========================
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+log/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.swp
+*.swo
+
+# ===========================
+# Build outputs
+# ===========================
+build/
+out/
+bin/
+dist/
+target/
+
+# Do not commit built artifacts
+*.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
+replay_pid*
+
+# Keep Gradle wrapper jar tracked
+!gradle/wrapper/gradle-wrapper.jar
+
+# ===========================
+# Gradle
+# ===========================
+.gradle/
+gradle-app.setting
+
+# ===========================
+# IDE/Editor
+# ===========================
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse
+.project
+.classpath
+.settings/
+*.launch
+
+# VS Code
+.vscode/
+.vscode-test/
+
+# ===========================
+# Paper/Minecraft dev
+# ===========================
+# Common local dev servers/folders
+run/
+server/
+devserver/
+testserver/
+cache/
+
+# Paperweight & reobf intermediates live under build/ already
+
+# ===========================
+# Repo-specific
+# ===========================
+# Optional local libraries folder
+libraries/
+
+# Local docs (generated or downloaded references)
+docs/
