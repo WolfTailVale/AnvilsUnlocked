@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.boss.BossBar;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -26,6 +27,8 @@ import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.Repairable;
 import org.bukkit.inventory.view.AnvilView;
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
 
 import net.kyori.adventure.text.Component;
 
@@ -42,6 +45,11 @@ import net.kyori.adventure.text.Component;
 public final class UncappedAnvilListener implements Listener {
     // Visible cost overlay per player
     private final Map<java.util.UUID, BossBar> costBars = new HashMap<>();
+
+    // PDC key for tracking anvil prior-uses independent of Mending repairs
+    private NamespacedKey usesKey() {
+        return new NamespacedKey(AnvilsUnlocked.getInstance(), "anvil_uses");
+    }
 
     // Set of any plank materials for unit repairs of wooden gear / shields
     private static final Set<Material> ANY_PLANKS = new HashSet<>();
@@ -486,7 +494,17 @@ public final class UncappedAnvilListener implements Listener {
         if (stack == null)
             return 0;
         ItemMeta meta = stack.getItemMeta();
+        if (meta == null)
+            return 0;
+        try {
+            PersistentDataContainer pdc = meta.getPersistentDataContainer();
+            Integer v = pdc.get(usesKey(), PersistentDataType.INTEGER);
+            if (v != null)
+                return Math.max(0, v);
+        } catch (Throwable ignored) {
+        }
         if (meta instanceof Repairable rep) {
+            // Fallback for legacy items without our PDC marker
             return Math.max(0, rep.getRepairCost());
         }
         return 0;
@@ -496,9 +514,19 @@ public final class UncappedAnvilListener implements Listener {
         if (stack == null)
             return;
         ItemMeta meta = stack.getItemMeta();
+        if (meta == null)
+            return;
+        int u = Math.max(0, uses);
+        try {
+            meta.getPersistentDataContainer().set(usesKey(), PersistentDataType.INTEGER, u);
+        } catch (Throwable ignored) {
+        }
         if (meta instanceof Repairable rep) {
-            rep.setRepairCost(Math.max(0, uses));
+            // Mirror for cross-plugin/vanilla compatibility
+            rep.setRepairCost(u);
             stack.setItemMeta((ItemMeta) rep);
+        } else {
+            stack.setItemMeta(meta);
         }
     }
 
