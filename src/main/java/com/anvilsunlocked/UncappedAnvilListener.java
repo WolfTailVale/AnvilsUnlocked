@@ -314,6 +314,7 @@ public final class UncappedAnvilListener implements Listener {
         if (left.getType() == right.getType() && left.getType().getMaxDurability() > 0) {
             ItemStack out = left.clone();
             ItemMeta outMeta = out.getItemMeta();
+            // Durability combine with ~12% bonus
             if (outMeta instanceof Damageable dm) {
                 int max = out.getType().getMaxDurability();
                 int leftRemaining = max - dm.getDamage();
@@ -322,12 +323,51 @@ public final class UncappedAnvilListener implements Listener {
                 if (rightMeta instanceof Damageable rdm) {
                     rightRemaining = max - rdm.getDamage();
                 }
-                int bonus = (int) Math.floor(max * 0.12); // ~12% bonus like vanilla
+                int bonus = (int) Math.floor(max * 0.12);
                 int totalRemaining = leftRemaining + rightRemaining + bonus;
                 int newDamage = Math.max(0, max - Math.min(totalRemaining, max));
                 dm.setDamage(newDamage);
                 out.setItemMeta((ItemMeta) dm);
+                outMeta = out.getItemMeta();
             }
+
+            // Enchantment merge (right overrides left on conflict)
+            Map<Enchantment, Integer> base = new HashMap<>(extractEnchantments(left));
+            Map<Enchantment, Integer> add = extractEnchantments(right);
+            for (Map.Entry<Enchantment, Integer> e : add.entrySet()) {
+                Enchantment ench = e.getKey();
+                int level = e.getValue();
+                if (!ench.canEnchantItem(out)) {
+                    continue;
+                }
+                if (base.containsKey(ench)) {
+                    int current = base.get(ench);
+                    int target = current == level ? Math.min(ench.getMaxLevel(), current + 1)
+                            : Math.max(current, level);
+                    base.put(ench, target);
+                } else {
+                    for (Enchantment existing : new ArrayList<>(base.keySet())) {
+                        if (!ench.equals(existing) && ench.conflictsWith(existing)) {
+                            base.remove(existing);
+                        }
+                    }
+                    base.put(ench, Math.min(level, ench.getMaxLevel()));
+                }
+            }
+
+            // Apply merged enchants to the item (regular items, not books)
+            outMeta = out.getItemMeta();
+            Set<Enchantment> toRemove = new HashSet<>(outMeta.getEnchants().keySet());
+            for (Enchantment ench : toRemove) {
+                outMeta.removeEnchant(ench);
+            }
+            for (Map.Entry<Enchantment, Integer> entry : base.entrySet()) {
+                Enchantment ench = entry.getKey();
+                int lvl = entry.getValue();
+                outMeta.addEnchant(ench, Math.min(lvl, ench.getMaxLevel()), true);
+            }
+            out.setItemMeta(outMeta);
+
             int uses = Math.max(getRepairUses(left), getRepairUses(right)) + 1;
             setRepairUses(out, uses);
             if (renameText != null && !renameText.isEmpty()) {
